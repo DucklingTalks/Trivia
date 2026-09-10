@@ -21,3 +21,4 @@
 - Logros
 - Avatares
 - Modo oscuro/claro
+- Observabilidad con PostHog y Sentry (planificación y documentación en progreso; ver [OBSERVABILITY.md](OBSERVABILITY.md))
