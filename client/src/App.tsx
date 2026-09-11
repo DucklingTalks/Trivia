@@ -1048,16 +1048,16 @@ function App() {
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="grid grid-cols-2 gap-4 pt-4">
                 <button 
                   onClick={() => setScreen('INITIAL')}
-                  className="flex-1 py-3 px-4 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-slate-800 transition-all active:scale-95"
+                  className="w-full min-w-0 py-3 px-4 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-slate-800 transition-all active:scale-95"
                 >
                   {t('back')}
                 </button>
                 <button 
                   onClick={handleCreateSession}
-                  className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 font-semibold text-white transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
+                  className="w-full min-w-0 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 font-semibold text-white transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
                 >
                   {t('createGameAction')}
                 </button>
