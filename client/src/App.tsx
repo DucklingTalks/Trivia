@@ -856,12 +856,12 @@ function App() {
 
         {/* 2. HOST CONFIGURATION SCREEN */}
         {screen === 'HOST_CONFIG' && (
-          <div className="w-full max-w-2xl bg-slate-800/40 border border-slate-800 rounded-2xl p-8 shadow-xl">
+          <div className="w-full max-w-2xl bg-slate-800/40 border border-slate-800 rounded-2xl p-4 sm:p-8 shadow-xl">
             <h2 className="text-3xl font-extrabold text-white mb-6 bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
               {t('triviaConfig')}
             </h2>
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('maxScore')}</label>
                   <input 
@@ -947,9 +947,9 @@ function App() {
                   {questions.map((q, idx) => (
                     <div key={idx} className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-col justify-between gap-3">
                       <div>
-                        <div className="flex justify-between items-start gap-2">
-                          <p className="font-semibold text-slate-100 text-sm">{idx + 1}. {q.text}</p>
-                          <div className="flex gap-2 shrink-0">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
+                          <p className="min-w-0 flex-1 break-words font-semibold text-slate-100 text-sm">{idx + 1}. {q.text}</p>
+                          <div className="flex gap-2 shrink-0 self-end sm:self-start">
                             <button
                               onClick={() => handleOpenEditQuestion(idx)}
                               className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
@@ -973,7 +973,7 @@ function App() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                         {q.options.map((opt, oIdx) => (
                           <div
                             key={oIdx}
