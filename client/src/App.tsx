@@ -792,20 +792,6 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-4xl mx-auto w-full">
 
-        {isAnalyticsConfigured() && isAnalyticsConsentRequired() && analyticsConsent === null && (
-          <div className="w-full max-w-3xl mb-6 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-sm text-slate-200">
-            <p className="mb-3">{t('analyticsConsentMessage')}</p>
-            <div className="flex gap-3">
-              <button onClick={() => handleAnalyticsConsent('accepted')} className="rounded-lg bg-indigo-600 px-3 py-2 font-semibold text-white hover:bg-indigo-700">
-                {t('analyticsAllow')}
-              </button>
-              <button onClick={() => handleAnalyticsConsent('declined')} className="rounded-lg border border-slate-600 px-3 py-2 font-semibold text-slate-300 hover:bg-slate-800">
-                {t('analyticsDecline')}
-              </button>
-            </div>
-          </div>
-        )}
-        
         {errorMsg && (
           <div className="w-full max-w-md mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center text-sm font-medium">
             {errorMsg}
@@ -1589,6 +1575,20 @@ function App() {
       <footer className="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
         &copy; {new Date().getFullYear()} {t('footerText')}
       </footer>
+
+      {isAnalyticsConfigured() && isAnalyticsConsentRequired() && analyticsConsent === null && (
+        <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 rounded-xl border border-indigo-500/30 bg-slate-900/95 p-4 text-sm text-slate-200 shadow-2xl backdrop-blur">
+          <p className="mb-3">{t('analyticsConsentMessage')}</p>
+          <div className="flex gap-3">
+            <button onClick={() => handleAnalyticsConsent('accepted')} className="rounded-lg bg-indigo-600 px-3 py-2 font-semibold text-white hover:bg-indigo-700">
+              {t('analyticsAllow')}
+            </button>
+            <button onClick={() => handleAnalyticsConsent('declined')} className="rounded-lg border border-slate-600 px-3 py-2 font-semibold text-slate-300 hover:bg-slate-800">
+              {t('analyticsDecline')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
