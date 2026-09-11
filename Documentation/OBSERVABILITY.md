@@ -59,7 +59,7 @@ La configuración debe desactivar captura automática y datos personales por def
 - [x] Keep `sendDefaultPii: false`; the installed 10.x SDK does not use the newer `dataCollection` option.
 - [x] Remove request, user, extra, context, breadcrumb, span, URL, message, and exception-value data before events are sent.
 - [x] Capture technical React, HTTP, Express, and Socket.IO failures without capturing expected validation responses as exceptions.
-- [ ] Complete provider-side alert, release, retention, and synthetic-data validation before production.
+- [x] Verify provider delivery with synthetic frontend and backend events. Sentry alerting, releases, and source maps remain outside the current scope.
 
 ### Fase 2 — PostHog para uso anónimo
 
@@ -71,10 +71,12 @@ La configuración debe desactivar captura automática y datos personales por def
 
 ### Fase 3 — Operación y revisión
 
-- [ ] Configurar alertas de Sentry por errores nuevos, regresiones y aumento anormal de fallos de conexión.
 - [ ] Crear los paneles de PostHog descritos abajo.
-- [ ] Revisar semanalmente muestras de eventos y trimestralmente retención, consentimiento y permisos.
-- [ ] Definir un procedimiento para borrar datos y revocar claves sin cambiar el código fuente.
+- [ ] Activar en PostHog el descarte de IP del cliente.
+- [ ] Configurar retención y permisos mínimos en PostHog.
+- [ ] Revisar consentimiento, retención y permisos periódicamente.
+
+Fuera del alcance actual: alertas, releases y source maps avanzados de Sentry; identificación persistente de usuarios únicos; métricas de sesiones activas en tiempo real; y dashboards operativos propios del backend.
 
 ## Puntos exactos de integración
 
