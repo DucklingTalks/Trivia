@@ -1,11 +1,11 @@
 # Plan de Observabilidad
 
-This document tracks the privacy-first observability rollout for Trivia. Sentry phase 1 is implemented for technical error monitoring; PostHog remains planned and is not implemented.
+This document tracks the privacy-first observability rollout for Trivia. Sentry phase 1 and the client-only PostHog phase 2 are implemented for technical monitoring and bounded product analytics.
 
 ## Ruta rápida
 
 1. El maintainer debe crear las cuentas, proyectos y claves en PostHog y Sentry. Este repositorio no crea cuentas externas ni contiene secretos.
-2. Sentry phase 1 is enabled in the client and server; add PostHog only after its consent and event review is complete.
+2. Sentry phase 1 is enabled in the client and server; PostHog phase 2 is enabled only when `VITE_POSTHOG_KEY` is present.
 3. Configurar cada entorno con variables independientes y verificar que no se envíen nombres, preguntas, respuestas, UUID locales ni direcciones IP.
 4. Completar la lista de validación de este documento antes de habilitar producción.
 
@@ -50,7 +50,7 @@ La configuración debe desactivar captura automática y datos personales por def
 - [ ] Define responsable, finalidad, retención, región de datos y procedimiento de borrado.
 - [ ] Decide si la analítica requiere consentimiento previo en las jurisdicciones y audiencias objetivo.
 - [ ] Documenta en la política de privacidad qué proveedores se usan y qué datos no se recopilan.
-- [ ] No añadir dependencias ni código hasta aprobar esta configuración.
+- [x] Approve the bounded client-only event list and privacy limits before enabling PostHog.
 
 ### Phase 1 — Sentry technical error monitoring (implemented)
 
@@ -63,10 +63,11 @@ La configuración debe desactivar captura automática y datos personales por def
 
 ### Fase 2 — PostHog para uso anónimo
 
-- [ ] Inicializarlo una sola vez en `client/src/main.tsx` o en un módulo dedicado de analítica, con autocapture desactivado.
-- [ ] Añadir consentimiento/opt-out antes de enviar eventos si la evaluación legal lo requiere.
-- [ ] Instrumentar solo acciones del producto y estados agregados; no enviar propiedades libres.
-- [ ] No instrumentar el servidor con PostHog en la primera versión: los eventos de producto nacen en el cliente y el backend queda para métricas operativas y Sentry.
+- [x] Initialize the official `posthog-js` browser SDK once in `client/src/analytics.ts`, called from `client/src/main.tsx`, only when `VITE_POSTHOG_KEY` is present.
+- [x] Use `VITE_POSTHOG_HOST`, memory persistence, disabled autocapture, automatic pageviews, session recording, and exception auto-capture.
+- [x] Require an explicit allow/decline choice when `VITE_POSTHOG_CONSENT_REQUIRED=true`; persist only that decision and opt out of capture on decline.
+- [x] Instrument only the approved bounded events and typed bucket properties. No free-form properties, application identifiers, or user identification are sent.
+- [x] Keep PostHog client-only. The server has no PostHog dependency or instrumentation.
 
 ### Fase 3 — Operación y revisión
 
@@ -89,7 +90,7 @@ La configuración debe desactivar captura automática y datos personales por def
 | `shared/types.ts` | Revisar tipos al diseñar propiedades agregadas; no ampliar payloads solo para telemetría. |
 | `Documentation/DEPLOYMENT.md` | Añadir las variables al procedimiento de despliegue cuando la implementación de código sea aprobada. |
 
-The repository now includes the Sentry SDKs and phase 1 integration. PostHog dependencies and instrumentation are intentionally still absent.
+The repository includes the Sentry SDKs and phase 1 integration plus the client-only PostHog phase 2 implementation. PostHog is inert when `VITE_POSTHOG_KEY` is absent.
 
 ## Taxonomía de eventos PostHog
 
@@ -108,7 +109,7 @@ Todos los nombres deben ser estables, en `snake_case`, y llevar únicamente las 
 | `game_finished` | Se emite `game:finished` | `duration_bucket`, `question_count_bucket`, `player_count_bucket` |
 | `reconnection_attempted` | Se intenta reconectar | `result`, `session_status` sin identificador |
 
-Rangos sugeridos: `question_count_bucket` (`1-5`, `6-10`, `11+`), `player_count_bucket` (`1`, `2-4`, `5-9`, `10+`), `response_time_bucket` (`0-5s`, `6-10s`, `11-20s`, `21s+`) y `duration_bucket` (`0-5m`, `6-15m`, `16m+`). No registrar `selectedOptionIndex` ni si la respuesta fue correcta en la primera versión; esos datos no son necesarios para los objetivos definidos.
+Rangos implementados: `question_count_bucket` (`1-5`, `6-10`, `11+`), `player_count_bucket` (`1`, `2-4`, `5-9`, `10+`), `response_time_bucket` (`0-5s`, `6-10s`, `11-20s`, `21s+`) y `duration_bucket` (`0-5m`, `6-15m`, `16m+`). `error_category` is one of `validation`, `network`, `server`, `rejected`, or `unknown`; `session_status` is one of `lobby`, `reading`, `answering`, `revealing`, `finished`, or `unknown`. No `selectedOptionIndex`, answer correctness, raw error, question, option, or other free-form value is sent.
 
 ## Variables de entorno
 
@@ -215,17 +216,28 @@ La compilación de Vite ocurre en `client`; los valores deben estar disponibles 
 
 ## Validación antes de producción
 
-- [ ] `client/package.json` y `server/package.json` solo cambian cuando se apruebe la implementación; este plan no agrega dependencias.
+- [x] `client/package.json` adds only the official `posthog-js` browser SDK; `server/package.json` is unchanged.
 - [ ] No hay claves, DSN, tokens ni valores con apariencia de secreto en Git, documentación o logs.
-- [ ] Una inspección de red confirma que no se envía la dirección IP desde la instrumentación propia ni como propiedad de evento.
+- [ ] Una inspección de red confirma que no se envía la dirección IP desde la instrumentación propia ni como propiedad de evento; la opción del proyecto PostHog para descartar IP del cliente está habilitada.
 - [ ] No aparecen `sessionId`, `playerName`, `playerUuid`, `localUuid`, `socket.id`, nombres de preguntas, opciones, respuestas o URLs completas en eventos y errores.
 - [ ] Autocapture, session replay y fingerprinting están desactivados; `sendDefaultPii` o la configuración equivalente de `dataCollection` no recopila PII.
 - [ ] Se prueba creación, unión, reconexión, respuesta, desconexión, error de red y finalización en local/staging.
 - [ ] Se comprueba que los errores esperables estén agrupados y redactados.
-- [ ] El consentimiento y el opt-out se prueban antes de generar cualquier evento de analítica.
+- [x] The consent banner uses the existing bilingual i18n UI. No event is sent before allow; decline calls PostHog opt-out and stores only the decision.
 - [ ] Los paneles muestran datos sintéticos esperados y ninguna dimensión sensible.
 - [ ] Se revisan retención, acceso, borrado y exportación con el maintainer.
 - [ ] Se confirma que la aplicación funciona cuando las variables están ausentes o el proveedor no responde.
+
+### Troubleshooting del navegador
+
+Las extensiones de privacidad y bloqueadores de anuncios pueden bloquear el endpoint de ingestión de Sentry (`*.ingest.*.sentry.io`). Si el navegador muestra `net::ERR_BLOCKED_BY_ADBLOCKER`, la aplicación puede estar correctamente configurada aunque el evento no llegue. Para validar:
+
+- Desactivar temporalmente el bloqueador en el dominio de Trivia, o agregar una excepción para el endpoint de ingestión de Sentry.
+- Mantener la pestaña Network abierta y confirmar que la petición a Sentry no sea bloqueada.
+- Repetir la prueba con otro navegador o un perfil limpio.
+- No usar el modo Offline global, porque también impide enviar el evento a Sentry.
+
+El DSN frontend aparece dentro de la URL de ingestión porque es una clave pública de envío; no debe confundirse con un token administrativo.
 
 ## Retención, consentimiento y gobierno
 

@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.tsx'
 import { LanguageProvider } from './i18n/LanguageContext'
+import { initializeAnalytics } from './analytics'
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN
 
@@ -47,6 +48,8 @@ if (sentryDsn) {
     },
   })
 }
+
+initializeAnalytics()
 
 const root = createRoot(document.getElementById('root')!, sentryDsn ? {
   onUncaughtError: Sentry.reactErrorHandler(),

@@ -109,6 +109,9 @@ export const translations = {
     errorProcessingFile: 'Error al procesar el archivo.',
     errorCreateSession: 'No se pudo crear la sesión.',
     errorNetworkSession: 'Error de red al intentar crear la sesión.',
+    analyticsConsentMessage: 'Podemos usar analítica anónima y acotada para mejorar Trivia. No incluye nombres, preguntas, respuestas, códigos ni identificadores de la aplicación.',
+    analyticsAllow: 'Permitir analítica',
+    analyticsDecline: 'No permitir',
   },
   en: {
     // Header
@@ -218,6 +221,9 @@ export const translations = {
     errorProcessingFile: 'Error processing the file.',
     errorCreateSession: 'Could not create the session.',
     errorNetworkSession: 'Network error while trying to create the session.',
+    analyticsConsentMessage: 'We may use limited anonymous analytics to improve Trivia. It does not include names, questions, answers, codes, or application identifiers.',
+    analyticsAllow: 'Allow analytics',
+    analyticsDecline: 'Decline',
   }
 } as const satisfies Record<Language, Record<string, string>>
 

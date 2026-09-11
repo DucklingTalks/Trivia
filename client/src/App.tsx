@@ -4,6 +4,19 @@ import { QRCodeSVG } from 'qrcode.react'
 import { sounds } from './sound'
 import { useLanguage } from './i18n/LanguageContext'
 import * as Sentry from '@sentry/react'
+import {
+  bucketDuration,
+  bucketPlayerCount,
+  bucketQuestionCount,
+  bucketResponseTime,
+  captureAnalyticsEvent,
+  getAnalyticsConsent,
+  isAnalyticsConfigured,
+  isAnalyticsConsentRequired,
+  mapErrorCategory,
+  mapSessionStatus,
+  setAnalyticsConsent,
+} from './analytics'
 import type { 
   Question, 
   TriviaConfig, 
@@ -379,6 +392,30 @@ function App() {
   const [answerStats, setAnswerStats] = useState<[number, number, number, number] | null>(null)
   const [scoreboard, setScoreboard] = useState<ScoreboardUpdatePayload['players']>([])
   const [podium, setPodium] = useState<GameFinishedPayload['podium']>([])
+  const [analyticsConsent, setAnalyticsConsentState] = useState(getAnalyticsConsent())
+  const gameStartedAt = useRef<number | null>(null)
+  const appOpenedSent = useRef(false)
+
+  useEffect(() => {
+    if (appOpenedSent.current || (isAnalyticsConsentRequired() && analyticsConsent !== 'accepted')) return
+    captureAnalyticsEvent('app_opened', {
+      environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'local',
+      language: lang,
+      app_version: import.meta.env.VITE_SENTRY_RELEASE || 'unknown',
+    })
+    appOpenedSent.current = true
+  }, [analyticsConsent, lang])
+
+  const handleAnalyticsConsent = (consent: 'accepted' | 'declined') => {
+    setAnalyticsConsent(consent)
+    setAnalyticsConsentState(consent)
+  }
+
+  const handleRoleSelected = (selectedRole: 'host' | 'player') => {
+    captureAnalyticsEvent('role_selected', { role: selectedRole, language: lang })
+    setRole(selectedRole.toUpperCase() as 'HOST' | 'PLAYER')
+    setScreen(selectedRole === 'host' ? 'HOST_CONFIG' : 'PLAYER_JOIN')
+  }
 
   // Generar UUID único del jugador si no existe en localStorage + auto-reconexión
   useEffect(() => {
@@ -409,6 +446,7 @@ function App() {
           { sessionId: savedSessionId, localUuid: uuid },
           (res: ReconnectResponsePayload) => {
             if (!res.success) {
+              captureAnalyticsEvent('reconnection_attempted', { result: 'failed', session_status: 'unknown' })
               // Sesión expirada o jugador no encontrado, limpiar storage
               localStorage.removeItem('trivia_session_id')
               localStorage.removeItem('trivia_player_name')
@@ -416,6 +454,10 @@ function App() {
               return
             }
 
+            captureAnalyticsEvent('reconnection_attempted', {
+              result: 'succeeded',
+              session_status: mapSessionStatus(res.sessionStatus),
+            })
             setLang(res.language || lang)
             setRole('PLAYER')
             setSessionId(savedSessionId)
@@ -474,6 +516,14 @@ function App() {
     });
 
     socket.on('round:start', (payload: RoundStartPayload) => {
+      if (payload.status === 'READING' && gameStartedAt.current === null) {
+        gameStartedAt.current = Date.now()
+        captureAnalyticsEvent('game_started', {
+          question_count_bucket: bucketQuestionCount(payload.totalQuestions),
+          player_count_bucket: bucketPlayerCount(players.length),
+          language: lang,
+        })
+      }
       setScreen('GAME')
       setGamePhase(payload.status)
       setCurrentQuestion(payload.question)
@@ -516,12 +566,22 @@ function App() {
     });
 
     socket.on('game:finished', (payload: GameFinishedPayload) => {
+      captureAnalyticsEvent('game_finished', {
+        duration_bucket: bucketDuration(gameStartedAt.current ? Date.now() - gameStartedAt.current : 0),
+        question_count_bucket: bucketQuestionCount(totalQuestions),
+        player_count_bucket: bucketPlayerCount(players.length),
+      })
+      gameStartedAt.current = null
       setGamePhase('FINISHED')
       setPodium(payload.podium)
       sounds.playVictory();
     });
 
     socket.on('connect_error', (error) => {
+      captureAnalyticsEvent('reconnection_attempted', {
+        result: 'failed',
+        session_status: 'unknown',
+      })
       Sentry.captureException(error, { tags: { operation: 'socket_connect' } })
       setErrorMsg(t('errorConnect'))
     })
@@ -539,7 +599,7 @@ function App() {
       socket.off('connect_error')
       socket.off('error:join')
     }
-  }, [sessionId, config.revealTime])
+  }, [sessionId, config.revealTime, players.length, lang, totalQuestions])
 
   // Helper para URL dinámica del servidor (Desarrollo / Proxy / Producción)
   const getApiUrl = () => {
@@ -560,18 +620,30 @@ function App() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        captureAnalyticsEvent('session_creation_failed', {
+          error_category: mapErrorCategory(response.status),
+          language: lang,
+        })
+        const errorData = await response.json().catch(() => ({}))
         setErrorMsg(errorData.error || t('errorCreateSession'))
         return
       }
 
       const session = await response.json()
+      captureAnalyticsEvent('session_creation_succeeded', {
+        language: lang,
+        question_count_bucket: bucketQuestionCount(questions.length),
+      })
       setSessionId(session.id)
       
       socket.connect()
       socket.emit('host:joinSession', { sessionId: session.id })
       setScreen('LOBBY')
     } catch (err: unknown) {
+      captureAnalyticsEvent('session_creation_failed', {
+        error_category: mapErrorCategory(undefined, err),
+        language: lang,
+      })
       Sentry.captureException(err, { tags: { operation: 'session_creation_request' } })
       setErrorMsg(err instanceof Error ? err.message : t('errorNetworkSession'))
     }
@@ -580,6 +652,7 @@ function App() {
   // Unirse a la sesión
   const handleJoinSession = () => {
     if (!sessionId.trim() || !playerName.trim()) {
+      captureAnalyticsEvent('session_join_failed', { error_category: 'validation', language: lang })
       setErrorMsg(t('validationCodeAndNickname'))
       return;
     }
@@ -594,12 +667,14 @@ function App() {
 
     socket.emit('player:join', joinPayload, (res: { success: boolean; error?: string; language?: 'es' | 'en' }) => {
       if (res.success) {
+        captureAnalyticsEvent('session_join_succeeded', { language: res.language || lang })
         setLang(res.language || lang)
         // Persistir sesión y nombre para reconexión automática
         localStorage.setItem('trivia_session_id', sessionId.trim().toUpperCase())
         localStorage.setItem('trivia_player_name', playerName.trim())
         setScreen('LOBBY')
       } else if (res.error) {
+        captureAnalyticsEvent('session_join_failed', { error_category: 'rejected', language: lang })
         setErrorMsg(res.error)
         socket.disconnect()
       }
@@ -620,6 +695,11 @@ function App() {
     setHasAnswered(true)
 
     const responseTimeMs = Date.now() - phaseStartTimestamp.current;
+
+    captureAnalyticsEvent('answer_submitted', {
+      response_time_bucket: bucketResponseTime(responseTimeMs),
+      question_number_bucket: bucketQuestionCount(currentQuestionNumber),
+    })
 
     socket.emit('player:answer', {
       sessionId,
@@ -647,6 +727,7 @@ function App() {
     setAnswerStats(null)
     setScoreboard([])
     setPodium([])
+    gameStartedAt.current = null
   }
 
   // Colores premium para botones
@@ -710,6 +791,20 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-4xl mx-auto w-full">
+
+        {isAnalyticsConfigured() && isAnalyticsConsentRequired() && analyticsConsent === null && (
+          <div className="w-full max-w-3xl mb-6 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-sm text-slate-200">
+            <p className="mb-3">{t('analyticsConsentMessage')}</p>
+            <div className="flex gap-3">
+              <button onClick={() => handleAnalyticsConsent('accepted')} className="rounded-lg bg-indigo-600 px-3 py-2 font-semibold text-white hover:bg-indigo-700">
+                {t('analyticsAllow')}
+              </button>
+              <button onClick={() => handleAnalyticsConsent('declined')} className="rounded-lg border border-slate-600 px-3 py-2 font-semibold text-slate-300 hover:bg-slate-800">
+                {t('analyticsDecline')}
+              </button>
+            </div>
+          </div>
+        )}
         
         {errorMsg && (
           <div className="w-full max-w-md mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center text-sm font-medium">
@@ -743,7 +838,7 @@ function App() {
                   </p>
                 </div>
                 <button 
-                  onClick={() => { setRole('HOST'); setScreen('HOST_CONFIG'); }}
+                  onClick={() => handleRoleSelected('host')}
                   className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 font-semibold text-white transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
                 >
                   {t('createGameBtn')}
@@ -763,7 +858,7 @@ function App() {
                   </p>
                 </div>
                 <button 
-                  onClick={() => { setRole('PLAYER'); setScreen('PLAYER_JOIN'); }}
+                  onClick={() => handleRoleSelected('player')}
                   className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 font-semibold text-white transition-all active:scale-95"
                 >
                   {t('joinGameBtn')}
