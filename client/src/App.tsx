@@ -3,6 +3,7 @@ import { socket } from './socket'
 import { QRCodeSVG } from 'qrcode.react'
 import { sounds } from './sound'
 import { useLanguage } from './i18n/LanguageContext'
+import * as Sentry from '@sentry/react'
 import type { 
   Question, 
   TriviaConfig, 
@@ -520,7 +521,8 @@ function App() {
       sounds.playVictory();
     });
 
-    socket.on('connect_error', () => {
+    socket.on('connect_error', (error) => {
+      Sentry.captureException(error, { tags: { operation: 'socket_connect' } })
       setErrorMsg(t('errorConnect'))
     })
 
@@ -559,7 +561,8 @@ function App() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || t('errorCreateSession'))
+        setErrorMsg(errorData.error || t('errorCreateSession'))
+        return
       }
 
       const session = await response.json()
@@ -568,8 +571,9 @@ function App() {
       socket.connect()
       socket.emit('host:joinSession', { sessionId: session.id })
       setScreen('LOBBY')
-    } catch (err: any) {
-      setErrorMsg(err.message || t('errorNetworkSession'))
+    } catch (err: unknown) {
+      Sentry.captureException(err, { tags: { operation: 'session_creation_request' } })
+      setErrorMsg(err instanceof Error ? err.message : t('errorNetworkSession'))
     }
   }
 

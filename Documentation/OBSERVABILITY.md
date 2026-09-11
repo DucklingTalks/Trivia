@@ -1,11 +1,11 @@
 # Plan de Observabilidad
 
-Este documento define la implementación futura de observabilidad para Trivia con **PostHog** (uso del producto) y **Sentry** (errores y rendimiento). Es un plan de integración, no una confirmación de que las herramientas ya estén instaladas o enviando datos.
+This document tracks the privacy-first observability rollout for Trivia. Sentry phase 1 is implemented for technical error monitoring; PostHog remains planned and is not implemented.
 
 ## Ruta rápida
 
 1. El maintainer debe crear las cuentas, proyectos y claves en PostHog y Sentry. Este repositorio no crea cuentas externas ni contiene secretos.
-2. Implementar primero Sentry en cliente y servidor; después agregar los eventos de producto de PostHog.
+2. Sentry phase 1 is enabled in the client and server; add PostHog only after its consent and event review is complete.
 3. Configurar cada entorno con variables independientes y verificar que no se envíen nombres, preguntas, respuestas, UUID locales ni direcciones IP.
 4. Completar la lista de validación de este documento antes de habilitar producción.
 
@@ -52,14 +52,14 @@ La configuración debe desactivar captura automática y datos personales por def
 - [ ] Documenta en la política de privacidad qué proveedores se usan y qué datos no se recopilan.
 - [ ] No añadir dependencias ni código hasta aprobar esta configuración.
 
-### Fase 1 — Sentry para fallos técnicos
+### Phase 1 — Sentry technical error monitoring (implemented)
 
-- [ ] Agregar el SDK oficial compatible con React/Vite en `client` y el SDK oficial compatible con Node en `server`.
-- [ ] Inicializar el cliente en `client/src/main.tsx`, antes de renderizar la aplicación, con entorno, release y la configuración de privacidad correspondiente a la versión instalada del SDK (`sendDefaultPii: false` o `dataCollection` restrictivo).
-- [ ] Inicializar el servidor en `server/src/index.ts`, antes de registrar rutas y Socket.IO, con filtros de solicitud y eventos.
-- [ ] Añadir límites de datos a los errores de `client/src/App.tsx`, `client/src/socket.ts`, `server/src/routes.ts` y `server/src/sockets.ts`; enviar solo nombres técnicos de operación y contadores.
-- [ ] Configurar `beforeSend`, `beforeBreadcrumb` y filtros equivalentes para eliminar query strings, cuerpos, cabeceras sensibles, nombres, UUID, IDs de socket y contenido de preguntas.
-- [ ] Comprobar que los errores de validación esperables no generan ruido ni contienen el mensaje introducido por el usuario.
+- [x] Add the official React/Vite and Node SDKs: `@sentry/react` and `@sentry/node`.
+- [x] Initialize the client in `client/src/main.tsx` and the server in `server/src/index.ts` only when a DSN is present.
+- [x] Keep `sendDefaultPii: false`; the installed 10.x SDK does not use the newer `dataCollection` option.
+- [x] Remove request, user, extra, context, breadcrumb, span, URL, message, and exception-value data before events are sent.
+- [x] Capture technical React, HTTP, Express, and Socket.IO failures without capturing expected validation responses as exceptions.
+- [ ] Complete provider-side alert, release, retention, and synthetic-data validation before production.
 
 ### Fase 2 — PostHog para uso anónimo
 
@@ -89,7 +89,7 @@ La configuración debe desactivar captura automática y datos personales por def
 | `shared/types.ts` | Revisar tipos al diseñar propiedades agregadas; no ampliar payloads solo para telemetría. |
 | `Documentation/DEPLOYMENT.md` | Añadir las variables al procedimiento de despliegue cuando la implementación de código sea aprobada. |
 
-La aplicación actual no tiene SDK de PostHog/Sentry ni dependencias relacionadas en `client/package.json` o `server/package.json`; por eso este cambio solo documenta el trabajo pendiente.
+The repository now includes the Sentry SDKs and phase 1 integration. PostHog dependencies and instrumentation are intentionally still absent.
 
 ## Taxonomía de eventos PostHog
 

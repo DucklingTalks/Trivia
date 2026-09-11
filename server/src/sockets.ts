@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import * as Sentry from '@sentry/node';
 import { getSession, getAllSessions } from './store';
 import { 
   PlayerJoinPayload, 
@@ -189,6 +190,10 @@ export function setupSockets(io: Server) {
 
   io.on('connection', (socket: Socket) => {
     console.log(`[Socket] Cliente conectado: ${socket.id}`);
+
+    socket.on('error', (error) => {
+      Sentry.captureException(error, { tags: { operation: 'socket_server_error' } });
+    });
 
     // Registro/Unión de Host
     socket.on('host:joinSession', (payload: { sessionId: string }) => {
