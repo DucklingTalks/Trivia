@@ -393,6 +393,8 @@ function App() {
   const [scoreboard, setScoreboard] = useState<ScoreboardUpdatePayload['players']>([])
   const [podium, setPodium] = useState<GameFinishedPayload['podium']>([])
   const [analyticsConsent, setAnalyticsConsentState] = useState(getAnalyticsConsent())
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
+  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false)
   const gameStartedAt = useRef<number | null>(null)
   const appOpenedSent = useRef(false)
 
@@ -905,22 +907,40 @@ function App() {
                 <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
                   <h3 className="text-lg font-bold text-white">{t('questions')} ({questions.length})</h3>
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleDownloadJSONTemplate}
-                      className="py-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-950/60 hover:bg-slate-800 text-xs font-medium text-slate-300 transition-all"
-                      title={t('downloadJsonTitle')}
-                    >
-                      📥 {t('downloadJsonTemplate')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDownloadCSVTemplate}
-                      className="py-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-950/60 hover:bg-slate-800 text-xs font-medium text-slate-300 transition-all"
-                      title={t('downloadCsvTitle')}
-                    >
-                      📥 {t('downloadCsvTemplate')}
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsTemplateMenuOpen((open) => !open)}
+                        className="py-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-950/60 hover:bg-slate-800 text-xs font-medium text-slate-300 transition-all"
+                        aria-expanded={isTemplateMenuOpen}
+                        aria-haspopup="menu"
+                      >
+                        📥 {t('templates')} ▾
+                      </button>
+
+                      {isTemplateMenuOpen && (
+                        <div className="absolute left-0 top-full z-20 mt-2 min-w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-xl" role="menu">
+                          <button
+                            type="button"
+                            onClick={() => { handleDownloadJSONTemplate(); setIsTemplateMenuOpen(false) }}
+                            className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
+                            title={t('downloadJsonTitle')}
+                            role="menuitem"
+                          >
+                            {t('downloadJsonTemplate')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleDownloadCSVTemplate(); setIsTemplateMenuOpen(false) }}
+                            className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
+                            title={t('downloadCsvTitle')}
+                            role="menuitem"
+                          >
+                            {t('downloadCsvTemplate')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     <label className="py-1.5 px-3 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-xs font-semibold text-violet-300 cursor-pointer transition-all active:scale-95 flex items-center gap-1">
                       <span>📂</span> {t('importQuestions')}
@@ -992,23 +1012,39 @@ function App() {
                 </div>
 
                 {/* Botones de exportación debajo de la lista */}
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="relative mt-3 inline-block">
                   <button
                     type="button"
-                    onClick={handleExportJSON}
-                    className="py-1.5 px-2.5 rounded-lg border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/50 text-xs font-medium text-indigo-200 transition-all"
-                    title={t('exportJsonTitle')}
+                    onClick={() => setIsExportMenuOpen((open) => !open)}
+                    className="py-1.5 px-3 rounded-lg border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/50 text-xs font-medium text-indigo-200 transition-all"
+                    aria-expanded={isExportMenuOpen}
+                    aria-haspopup="menu"
                   >
-                    📤 {t('exportJson')}
+                    📤 {t('exportData')} ▾
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleExportCSV}
-                    className="py-1.5 px-2.5 rounded-lg border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/50 text-xs font-medium text-indigo-200 transition-all"
-                    title={t('exportCsvTitle')}
-                  >
-                    📤 {t('exportCsv')}
-                  </button>
+
+                  {isExportMenuOpen && (
+                    <div className="absolute left-0 bottom-full z-20 mb-2 min-w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-xl" role="menu">
+                      <button
+                        type="button"
+                        onClick={() => { handleExportJSON(); setIsExportMenuOpen(false) }}
+                        className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
+                        title={t('exportJsonTitle')}
+                        role="menuitem"
+                      >
+                        {t('exportJson')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { handleExportCSV(); setIsExportMenuOpen(false) }}
+                        className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
+                        title={t('exportCsvTitle')}
+                        role="menuitem"
+                      >
+                        {t('exportCsv')}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
