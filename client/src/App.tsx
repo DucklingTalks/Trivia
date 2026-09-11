@@ -1012,39 +1012,41 @@ function App() {
                 </div>
 
                 {/* Botones de exportación debajo de la lista */}
-                <div className="relative mt-3 inline-block">
-                  <button
-                    type="button"
-                    onClick={() => setIsExportMenuOpen((open) => !open)}
-                    className="py-1.5 px-3 rounded-lg border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/50 text-xs font-medium text-indigo-200 transition-all"
-                    aria-expanded={isExportMenuOpen}
-                    aria-haspopup="menu"
-                  >
-                    📤 {t('exportData')} ▾
-                  </button>
+                <div className="flex justify-end mt-3">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsExportMenuOpen((open) => !open)}
+                      className="py-1.5 px-3 rounded-lg border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/50 text-xs font-medium text-indigo-200 transition-all"
+                      aria-expanded={isExportMenuOpen}
+                      aria-haspopup="menu"
+                    >
+                      📤 {t('exportData')} ▾
+                    </button>
 
-                  {isExportMenuOpen && (
-                    <div className="absolute left-0 bottom-full z-20 mb-2 min-w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-xl" role="menu">
-                      <button
-                        type="button"
-                        onClick={() => { handleExportJSON(); setIsExportMenuOpen(false) }}
-                        className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
-                        title={t('exportJsonTitle')}
-                        role="menuitem"
-                      >
-                        {t('exportJson')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { handleExportCSV(); setIsExportMenuOpen(false) }}
-                        className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
-                        title={t('exportCsvTitle')}
-                        role="menuitem"
-                      >
-                        {t('exportCsv')}
-                      </button>
-                    </div>
-                  )}
+                    {isExportMenuOpen && (
+                      <div className="absolute right-0 bottom-full z-20 mb-2 min-w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-xl" role="menu">
+                        <button
+                          type="button"
+                          onClick={() => { handleExportJSON(); setIsExportMenuOpen(false) }}
+                          className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
+                          title={t('exportJsonTitle')}
+                          role="menuitem"
+                        >
+                          {t('exportJson')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { handleExportCSV(); setIsExportMenuOpen(false) }}
+                          className="block w-full whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800"
+                          title={t('exportCsvTitle')}
+                          role="menuitem"
+                        >
+                          {t('exportCsv')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
