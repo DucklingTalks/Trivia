@@ -963,7 +963,7 @@ function App() {
                 </div>
 
                 {/* Lista de preguntas */}
-                <div className="max-h-72 overflow-y-auto space-y-3 pr-2">
+                <div className="max-h-none overflow-visible space-y-3 pr-0 sm:max-h-72 sm:overflow-y-auto sm:pr-2">
                   {questions.map((q, idx) => (
                     <div key={idx} className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-col justify-between gap-3">
                       <div>
