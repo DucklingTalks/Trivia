@@ -44,6 +44,11 @@ export interface Session {
 // Interfaces de eventos y payloads de Socket.IO
 
 // Eventos enviados por el Host
+export interface HostJoinSessionResponsePayload {
+  success: boolean;
+  error?: string;
+}
+
 export interface HostCreateSessionPayload {
   config: TriviaConfig;
   questions: Question[];

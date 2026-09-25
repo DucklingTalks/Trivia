@@ -20,6 +20,7 @@ import {
 import type { 
   Question, 
   TriviaConfig, 
+  HostJoinSessionResponsePayload,
   LobbyUpdatePayload, 
   PlayerJoinPayload,
   ReconnectResponsePayload,
@@ -108,6 +109,9 @@ function App() {
   const [sessionId, setSessionId] = useState<string>('')
   const [players, setPlayers] = useState<{ name: string; isConnected: boolean }[]>([])
   const [errorMsg, setErrorMsg] = useState<string>('')
+  const [isCreatingSession, setIsCreatingSession] = useState(false)
+  const [isJoiningSession, setIsJoiningSession] = useState(false)
+  const pendingHostSessionId = useRef<string | null>(null)
 
   // Configuración de la Trivia (Host)
   const [config, setConfig] = useState<TriviaConfig>({
@@ -512,7 +516,10 @@ function App() {
   // Sincronizar eventos socket
   useEffect(() => {
     socket.on('lobby:update', (payload: LobbyUpdatePayload) => {
-      if (payload.sessionId.toUpperCase() === sessionId.toUpperCase()) {
+      const normalizedPayloadSessionId = payload.sessionId.toUpperCase()
+      const expectedSessionId = pendingHostSessionId.current || sessionId.toUpperCase()
+
+      if (normalizedPayloadSessionId === expectedSessionId) {
         setPlayers(payload.players)
       }
     });
@@ -586,10 +593,20 @@ function App() {
       })
       Sentry.captureException(error, { tags: { operation: 'socket_connect' } })
       setErrorMsg(t('errorConnect'))
+      setIsCreatingSession(false)
+      setIsJoiningSession(false)
+      pendingHostSessionId.current = null
     })
 
     socket.on('error:join', (err: { message: string }) => {
       setErrorMsg(err.message)
+      setIsJoiningSession(false)
+    })
+
+    socket.on('error:sessionNotFound', (err: { message: string }) => {
+      setErrorMsg(err.message)
+      setIsCreatingSession(false)
+      pendingHostSessionId.current = null
     })
 
     return () => {
@@ -600,6 +617,7 @@ function App() {
       socket.off('game:finished')
       socket.off('connect_error')
       socket.off('error:join')
+      socket.off('error:sessionNotFound')
     }
   }, [sessionId, config.revealTime, players.length, lang, totalQuestions])
 
@@ -613,6 +631,10 @@ function App() {
 
   // Crear la sesión en el Backend
   const handleCreateSession = async () => {
+    if (isCreatingSession) return
+
+    setIsCreatingSession(true)
+    pendingHostSessionId.current = null
     try {
       setErrorMsg('')
       const response = await fetch(`${getApiUrl()}/api/session`, {
@@ -628,6 +650,7 @@ function App() {
         })
         const errorData = await response.json().catch(() => ({}))
         setErrorMsg(errorData.error || t('errorCreateSession'))
+        setIsCreatingSession(false)
         return
       }
 
@@ -637,10 +660,24 @@ function App() {
         question_count_bucket: bucketQuestionCount(questions.length),
       })
       setSessionId(session.id)
-      
+      pendingHostSessionId.current = session.id.toUpperCase()
       socket.connect()
-      socket.emit('host:joinSession', { sessionId: session.id })
-      setScreen('LOBBY')
+      socket.emit(
+        'host:joinSession',
+        { sessionId: session.id },
+        (response: HostJoinSessionResponsePayload) => {
+          if (response.success) {
+            pendingHostSessionId.current = null
+            setIsCreatingSession(false)
+            setScreen('LOBBY')
+            return
+          }
+
+          setIsCreatingSession(false)
+          pendingHostSessionId.current = null
+          setErrorMsg(response.error || t('errorCreateSession'))
+        }
+      )
     } catch (err: unknown) {
       captureAnalyticsEvent('session_creation_failed', {
         error_category: mapErrorCategory(undefined, err),
@@ -648,17 +685,22 @@ function App() {
       })
       Sentry.captureException(err, { tags: { operation: 'session_creation_request' } })
       setErrorMsg(err instanceof Error ? err.message : t('errorNetworkSession'))
+      setIsCreatingSession(false)
+      pendingHostSessionId.current = null
     }
   }
 
   // Unirse a la sesión
   const handleJoinSession = () => {
+    if (isJoiningSession) return
+
     if (!sessionId.trim() || !playerName.trim()) {
       captureAnalyticsEvent('session_join_failed', { error_category: 'validation', language: lang })
       setErrorMsg(t('validationCodeAndNickname'))
       return;
     }
     setErrorMsg('')
+    setIsJoiningSession(true)
     socket.connect()
     
     const joinPayload: PlayerJoinPayload = {
@@ -674,10 +716,12 @@ function App() {
         // Persistir sesión y nombre para reconexión automática
         localStorage.setItem('trivia_session_id', sessionId.trim().toUpperCase())
         localStorage.setItem('trivia_player_name', playerName.trim())
+        setIsJoiningSession(false)
         setScreen('LOBBY')
       } else if (res.error) {
         captureAnalyticsEvent('session_join_failed', { error_category: 'rejected', language: lang })
         setErrorMsg(res.error)
+        setIsJoiningSession(false)
         socket.disconnect()
       }
     })
@@ -720,6 +764,9 @@ function App() {
     setSessionId('')
     setPlayers([])
     setErrorMsg('')
+    setIsCreatingSession(false)
+    setIsJoiningSession(false)
+    pendingHostSessionId.current = null
     setPlayerName('')
     setCurrentQuestion(null)
     setHasAnswered(false)
@@ -746,9 +793,14 @@ function App() {
     <div className="min-h-screen flex flex-col justify-between bg-slate-900 text-slate-100 font-sans">
       {/* Header */}
       <header className="border-b border-slate-800 py-4 px-6 flex justify-between items-center bg-slate-900/90 backdrop-blur sticky top-0 z-50">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={resetAll}>
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
-            T
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={resetAll}
+          aria-label="Trivia Time"
+          title="Trivia Time"
+        >
+          <div aria-hidden="true" className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+            TT
           </div>
           <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
             {t('appName')}
@@ -795,7 +847,7 @@ function App() {
       <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-4xl mx-auto w-full">
 
         {errorMsg && (
-          <div className="w-full max-w-md mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center text-sm font-medium">
+          <div aria-live="polite" className="w-full max-w-md mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center text-sm font-medium">
             {errorMsg}
           </div>
         )}
@@ -1059,9 +1111,19 @@ function App() {
                 </button>
                 <button 
                   onClick={handleCreateSession}
-                  className="w-full min-w-0 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 font-semibold text-white transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
+                  disabled={isCreatingSession}
+                  aria-busy={isCreatingSession}
+                  className="w-full min-w-0 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 font-semibold text-white transition-all shadow-lg shadow-indigo-500/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {t('createGameAction')}
+                  {isCreatingSession ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      {t('creatingSession')}
+                    </span>
+                  ) : t('createGameAction')}
                 </button>
               </div>
             </div>
@@ -1219,9 +1281,19 @@ function App() {
                 </button>
                 <button
                   onClick={handleJoinSession}
-                  className="flex-1 py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 font-semibold text-white transition-all active:scale-95"
+                  disabled={isJoiningSession}
+                  aria-busy={isJoiningSession}
+                  className="flex-1 py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 font-semibold text-white transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {t('join')}
+                  {isJoiningSession ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      {t('joiningSession')}
+                    </span>
+                  ) : t('join')}
                 </button>
               </div>
             </div>

@@ -7,6 +7,7 @@ import {
   ReconnectResponsePayload,
   LobbyUpdatePayload, 
   Player, 
+  HostJoinSessionResponsePayload,
   HostStartGamePayload, 
   PlayerAnswerPayload, 
   RoundStartPayload,
@@ -196,17 +197,26 @@ export function setupSockets(io: Server) {
     });
 
     // Registro/Unión de Host
-    socket.on('host:joinSession', (payload: { sessionId: string }) => {
+    socket.on('host:joinSession', (
+      payload: { sessionId: string },
+      callback?: (response: HostJoinSessionResponsePayload) => void
+    ) => {
       const { sessionId } = payload;
       const session = getSession(sessionId);
 
       if (!session) {
-        socket.emit('error:sessionNotFound', { message: 'La sesión no existe.' });
+        const error = 'La sesión no existe.';
+        if (callback) {
+          callback({ success: false, error });
+        } else {
+          socket.emit('error:sessionNotFound', { message: error });
+        }
         return;
       }
 
       socket.join(sessionId);
       console.log(`[Socket] Host unido a la sesión: ${sessionId} (Socket: ${socket.id})`);
+      if (callback) callback({ success: true });
     });
 
     // Iniciar partida (Host)
