@@ -3,7 +3,7 @@ export type Language = "es" | "en";
 export const translations = {
   es: {
     // Header
-    appName: "Trivia realtime",
+    appName: "Trivia Time",
     exit: "Salir",
 
     // Initial screen
@@ -66,6 +66,8 @@ export const translations = {
     yourNickname: "Tu Apodo",
     nicknamePlaceholder: "Ej. Goku99",
     join: "Unirse",
+    creatingSession: "Creando sesión...",
+    joiningSession: "Uniéndose...",
 
     // Lobby screen
     lobbyLabel: "Lobby de Partida",
@@ -100,7 +102,7 @@ export const translations = {
     backToMenu: "Volver al Menú Principal",
 
     // Footer
-    footerText: "Trivia Realtime MVP. Todos los derechos reservados.",
+    footerText: "Trivia Time MVP. Todos los derechos reservados.",
 
     // Validation messages
     validationMinQuestion: "Debe haber al menos 1 pregunta en la trivia.",
@@ -126,7 +128,7 @@ export const translations = {
   },
   en: {
     // Header
-    appName: "Trivia realtime",
+    appName: "Trivia Time",
     exit: "Exit",
 
     // Initial screen
@@ -189,6 +191,8 @@ export const translations = {
     yourNickname: "Your Nickname",
     nicknamePlaceholder: "E.g. Goku99",
     join: "Join",
+    creatingSession: "Creating session...",
+    joiningSession: "Joining...",
 
     // Lobby screen
     lobbyLabel: "Game Lobby",
@@ -222,7 +226,7 @@ export const translations = {
     backToMenu: "Back to Main Menu",
 
     // Footer
-    footerText: "Trivia Realtime MVP. All rights reserved.",
+    footerText: "Trivia Time MVP. All rights reserved.",
 
     // Validation messages
     validationMinQuestion: "There must be at least 1 question in the trivia.",
